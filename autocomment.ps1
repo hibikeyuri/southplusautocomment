@@ -5,6 +5,15 @@ $mylocation = Get-Location
 Import-Module "$mylocation\WebDriver.dll"
 
 
+$NORMALPOSTFLAG = $false
+$DATEFLAG = $false
+$GREATERTHANFLAG = $false
+
+$before_post_time_interval = 3
+$before_submit_time_interval = 6
+$wait_for_net_post_interval = 3
+
+$poststring = "感謝樓主分享"
 
 function cookiejsonfilecheck {
     param([string]$filename)
@@ -53,23 +62,29 @@ function getPostElementList {
 }
 
 
-function isSpecialPost {
+function whatSpecialPost {
     param($post)
     #is a top post
     try {
         $post = $post.FindElements([By]::TagName("td"))[1]
         $posttype = $post.FindElement([By]::TagName("img")).GetAttribute("title")
-        if ([string]::IsNullOrEmpty($posttype)) { return $false }
-        if ($posttype -eq "新帖标志") {return "一般帖(新帖)"}
-        else {return "置頂帖"}
-        # Write-Host $post
-        # Write-Host $posttype.GetType().name
+        if ([string]::IsNullOrEmpty($posttype)) { 
+            $script:NORMALPOSTFLAG = $true
+            return "一般帖" 
+        }
+        if ($posttype -eq "新帖标志") {
+            $script:NORMALPOSTFLAG = $true
+            return "一般帖(新帖)"
+        }
+        else {
+            $script:NORMALPOSTFLAG = $false
+            return "置頂帖"
+        }
     }
-    #is an essence post
+    #is an essence post or normal post
     catch {
-        <#Do this if a terminating exception happens#>
         $script:NORMALPOSTFLAG = $true
-        return $false
+        return "一般帖"
     }
 }
 
@@ -85,24 +100,40 @@ function handleDate {
     catch {
         return $false
     }
-    
 }
 
-function handlePost {
+function postInfo {
     param($post, $posttype, $wantdate)
+
     $commentdate = handleDate($post)
     $post_id = $post.FindElements([By]::TagName("td"))[1].GetAttribute("id")
     # $today_post = $post.FindElement([By]::CssSelector("[color='red']"))
     $post_url = $post.FindElement([By]::TagName("h3")).FindElement([By]::TagName("a")).GetAttribute('href')
     $genre = $post.FindElements([By]::TagName("td"))[1].FindElement([By]::TagName("a")).Text
     $title = $post.FindElements([By]::TagName("td"))[1].FindElements([By]::TagName("a"))[1].Text
-    
-    $ChromeDriver.Navigate().GoToUrl($post_url)
+    $samedate = $($(Get-Date -Format "yyyy-MM-dd") -eq $commentdate)
     # $ChromeDriver.Manage().Timeouts().ImplicitWait(5)
 
     Write-Host "-----" -NoNewline
-    if ($commentdate -ne $wantdate) { Write-Host " $commentdate" -ForegroundColor Yellow -NoNewline}
-    else {Write-Host " $commentdate" -ForegroundColor Green -NoNewline}
+    if (!([string]::IsNullOrEmpty($wantdate))) {
+        if ($commentdate -eq $wantdate) {
+            Write-Host " $commentdate" -ForegroundColor Green -NoNewline
+        }
+        elseif ($($(Get-Date -Format "yyyy-MM-dd") -eq $commentdate)) {
+            Write-Host " $commentdate" -ForegroundColor Cyan -NoNewline
+        } 
+        else {
+            Write-Host " $commentdate" -ForegroundColor Yellow -NoNewline
+        }
+    }
+    else {
+        if ($samedate){
+            Write-Host " $commentdate" -ForegroundColor Green -NoNewline
+        }
+        else {
+            Write-Host " $commentdate" -ForegroundColor Yellow -NoNewline
+        }
+    }
     if ($posttype -eq "一般帖" -or $posttype -eq "置頂帖") {Write-Host " $posttype      " -NoNewline}
     else{Write-Host " $posttype" -NoNewline}
     Write-Host " $post_id" -NoNewline
@@ -110,37 +141,101 @@ function handlePost {
     Write-Host "種類: $genre"
     Write-Host "標題: $title"
 
+    #回傳張貼日期、帖子id、帖子URL、帖子種類、帖子標題
+    return $commentdate, $post_id, $post_url, $genre, $title
+}
+
+function handlePost {
     Write-Host "Posting..." -NoNewline
-    # $Actions.MoveToElement($ChromeDriver.FindElement([By]::Id('footer'))).Build().Perform()
-    # $ChromeDriver.FindElement([By]::TagName('textarea')).SendKeys($poststring)
-    # Start-Sleep 3
-    # $ChromeDriver.FindElement([By]::CssSelector(("[name='Submit']"))).Click()
-    # Start-Sleep 6
+    $script:Actions.MoveToElement($script:ChromeDriver.FindElement([By]::Id('footer'))).Build().Perform()
+    $script:ChromeDriver.FindElement([By]::TagName('textarea')).SendKeys($script:poststring)
+    Start-Sleep $script:before_post_time_interval
+    $script:ChromeDriver.FindElement([By]::CssSelector(("[name='Submit']"))).Click()
+    Start-Sleep $script:before_submit_time_interval
     Write-Host "...done."
-    $ChromeDriver.Navigate().Back()
-    # $ChromeDriver.Navigate().Back()
-    # Start-Sleep 3
+    $script:ChromeDriver.Navigate().Back()
+    $script:ChromeDriver.Navigate().Back()
+    Start-Sleep $script:wait_for_net_post_interval
+}
+
+function checkPost {
+    param($post, $posttype, $wantdate)
+    
+    $commentdate, $post_id, $post_url, $genre, $title = postInfo $post $posttype $wantdate
+
+    #有給日期
+    if (![string]::IsNullOrEmpty($wantdate)) {
+        if ($wantdate -gt $commentdate) { $script:GREATERTHANFLAG = $true}
+        else { $script:GREATERTHANFLAG = $false}
+        if ($wantdate -eq $commentdate -and $post_id -notin $script:commentedpostid) {
+            $script:ChromeDriver.Navigate().GoToUrl($post_url)
+            handlePost
+            $script:commentedpostid += $post_id
+            $commentedpostid | Out-File $mylocation\commentedpostid.txt
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+    #沒給日期
+    else {
+        if ($(Get-Date -Format "yyyy-MM-dd") -gt $commentdate) { $script:GREATERTHANFLAG= $true}
+        else { $script:GREATERTHANFLAG = $false}
+        if ($($(Get-Date -Format "yyyy-MM-dd") -eq $commentdate) -and $post_id -notin $script:commentedpostid) {
+            $script:ChromeDriver.Navigate().GoToUrl($post_url)
+            handlePost
+            $script:commentedpostid += $post_id
+            $commentedpostid | Out-File $mylocation\commentedpostid.txt
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+    
 }
 
 $ChromeDriver = setChromeDriver($cookiefilename, $siteurl)
-$ChromeDriver.Navigate().GoToUrl($onseiurl)
-$actions = New-Object -TypeName Interactions.Actions ($ChromeDriver)
+$Actions = New-Object -TypeName Interactions.Actions ($ChromeDriver)
 
-#確保post的elements
-
-$i = 0
-#處理今日置頂帖
-$items = getPostElementList
-
-foreach ($item in $items) {
+#fid128
+$onseipagedurl = $onseiurl.Substring(0, $onseiurl.LastIndexOf('.'))
+#fid128-page
+$onseipagedurl += "-page"
+$i = 1
+:outer while ($true) {
+    $wantdate = "2023-06-05"
+    #fid128-page-1.html
+    $onseipagedurl += "-$i.html"
+    Write-Host $onseipagedurl
+    Write-Host "-------------------" -ForegroundColor Cyan
+    Write-Host "正在進行進行同人音聲板第 $i 頁..." -ForegroundColor Cyan
+    Write-Host "-------------------" -ForegroundColor Cyan
+    $ChromeDriver.Navigate().GoToUrl($onseipagedurl)
+    $items = getPostElementList
+    foreach ($item in $items) {
     # Write-Host $item.GetType().name
-    $posttype = isSpecialPost($item)
-    if (!$posttype) { $posttype = "一般帖" }
-    handlePost $item $posttype "2023-06-04"
-    # $commentedpostid += $post_id
+        $posttype = whatSpecialPost($item)
+        $check = checkPost $item $posttype $wantdate
+
+        Write-Host "一般帖: $NORMALPOSTFLAG, 有日期: $DATEFLAG, 設定日期大於帖子張貼日期: $GREATERTHANFLAG"
+
+        if ($($posttype -eq "一般帖(新帖)" -or $posttype -eq "一般帖") -and $NORMALPOSTFLAG -and $DATEFLAG -and $GREATERTHANFLAG) {
+            Write-Host "Auto comment is done." -ForegroundColor Cyan
+            break outer
+        }
+
+        if ($check) {
+            Write-Host "-----             回覆已完成             -----" -ForegroundColor Green
+        }
+        else {
+            Write-Host "-----       非自選日期或是已回覆        -----" -ForegroundColor Red
+        }
+        Write-Host "`r`n"
+    } 
+
+    $onseipagedurl = $onseipagedurl.Substring(0, $onseipagedurl.LastIndexOf('-'))
+    Write-Host $onseipagedurl
     $i += 1
 }
-
-$commentedpostid | Out-File $mylocation\commentpostid.txt
-
-
