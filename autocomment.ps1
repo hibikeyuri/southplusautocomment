@@ -1,9 +1,18 @@
 ﻿using namespace OpenQA.Selenium
 
-$mylocation = Get-Location
+param(
+    [Parameter(Position=0,mandatory=$true)]
+    [string] $url,
+    [Parameter(Position=1,mandatory=$true)]
+    [string] $wantdate
+)
 
 Import-Module "$mylocation\WebDriver.dll"
 
+Write-Host $url
+$mylocation = Get-Location
+$cookiefilename = "southpluscookie.json"
+$commentedpostid = @(Get-Content $mylocation\commentedpostid.txt)
 
 $NORMALPOSTFLAG = $false
 $DATEFLAG = $false
@@ -14,6 +23,15 @@ $before_submit_time_interval = 6
 $wait_for_net_post_interval = 3
 
 $poststring = "感謝樓主分享"
+
+
+function checkUrl {
+    param($url)
+    if ($url.Contains("fid-128")) {return "同人音声"}
+    elseif ($url.Contains("fid-4")) {return "動畫資源"}
+    elseif ($url.Contains("fid-14")) {return "CG資源"}
+    elseif ($url.Contains("fid-6")) {return "遊戲資源"}
+}
 
 function cookiejsonfilecheck {
     param([string]$filename)
@@ -60,7 +78,6 @@ function getPostElementList {
     $posts = $posts.FindElements([By]::ClassName(('tr3')))
     return $posts
 }
-
 
 function whatSpecialPost {
     param($post)
@@ -199,20 +216,20 @@ function checkPost {
 $ChromeDriver = setChromeDriver($cookiefilename, $siteurl)
 $Actions = New-Object -TypeName Interactions.Actions ($ChromeDriver)
 
-#fid128
-$onseipagedurl = $onseiurl.Substring(0, $onseiurl.LastIndexOf('.'))
-#fid128-page
-$onseipagedurl += "-page"
+
+$pagedurl = $url.Substring(0, $url.LastIndexOf('.'))
+$pagedurl += "-page"
 $i = 1
 :outer while ($true) {
-    $wantdate = "2023-06-05"
+    # $wantdate = "2023-06-05"
     #fid128-page-1.html
-    $onseipagedurl += "-$i.html"
-    Write-Host $onseipagedurl
+    $pagedurl += "-$i.html"
+    Write-Host $pagedurl
+    $postbase = checkUrl($url)
     Write-Host "-------------------" -ForegroundColor Cyan
-    Write-Host "正在進行進行同人音聲板第 $i 頁..." -ForegroundColor Cyan
+    Write-Host "正在進行進行 $postbase 板第 $i 頁..." -ForegroundColor Cyan
     Write-Host "-------------------" -ForegroundColor Cyan
-    $ChromeDriver.Navigate().GoToUrl($onseipagedurl)
+    $ChromeDriver.Navigate().GoToUrl($pagedurl)
     $items = getPostElementList
     foreach ($item in $items) {
     # Write-Host $item.GetType().name
@@ -235,7 +252,7 @@ $i = 1
         Write-Host "`r`n"
     } 
 
-    $onseipagedurl = $onseipagedurl.Substring(0, $onseipagedurl.LastIndexOf('-'))
-    Write-Host $onseipagedurl
+    $pagedurl = $pagedurl.Substring(0, $pagedurl.LastIndexOf('-'))
+    Write-Host $pagedurl
     $i += 1
 }
