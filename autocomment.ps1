@@ -7,10 +7,12 @@ param(
     [string] $wantdate
 )
 
+$mylocation = Get-Location
+Write-Host $mylocation
 Import-Module "$mylocation\WebDriver.dll"
 
-Write-Host $url
-$mylocation = Get-Location
+
+
 $cookiefilename = "southpluscookie.json"
 $commentedpostid = @(Get-Content $mylocation\commentedpostid.txt)
 
@@ -18,10 +20,11 @@ $NORMALPOSTFLAG = $false
 $DATEFLAG = $false
 $GREATERTHANFLAG = $false
 
-$before_post_time_interval = 3
-$before_submit_time_interval = 6
-$wait_for_net_post_interval = 3
+$before_post_time_interval = 2
+$before_submit_time_interval = 5
+$wait_for_net_post_interval = 2
 
+$siteurl = ""
 $poststring = "感謝樓主分享"
 
 
@@ -239,7 +242,7 @@ $i = 1
         Write-Host "一般帖: $NORMALPOSTFLAG, 有日期: $DATEFLAG, 設定日期大於帖子張貼日期: $GREATERTHANFLAG"
 
         if ($($posttype -eq "一般帖(新帖)" -or $posttype -eq "一般帖") -and $NORMALPOSTFLAG -and $DATEFLAG -and $GREATERTHANFLAG) {
-            Write-Host "Auto comment is done." -ForegroundColor Cyan
+            Write-Host "=====      Auto comment is done.      =====" -ForegroundColor Cyan
             break outer
         }
 
@@ -256,3 +259,5 @@ $i = 1
     Write-Host $pagedurl
     $i += 1
 }
+
+$ChromeDriver.Close()
