@@ -21,12 +21,15 @@ $DATEFLAG = $false
 $GREATERTHANFLAG = $false
 
 $before_post_time_interval = 2
-$before_submit_time_interval = 5
+$before_submit_time_interval = 6
 $wait_for_net_post_interval = 2
 
 $siteurl = ""
-$poststring = "感謝樓主分享"
+$poststring = ""
 
+$seleniumWait = ""
+$opt = New-Object -TypeName Chrome.ChromeOptions
+$opt.PageLoadStrategy = "eager"
 
 function checkUrl {
     param($url)
@@ -49,8 +52,9 @@ function cookiejsonfilecheck {
 
 function setChromeDriver {
     param([string]$filename)
-    $driver = New-Object OpenQA.Selenium.Chrome.ChromeDriver
+    $driver = New-Object OpenQA.Selenium.Chrome.ChromeDriver($opt)
     $driver.Navigate().GoToUrl($script:siteurl)
+    $script:seleniumWait = New-Object -TypeName Support.UI.WebDriverWait($driver, (New-TimeSpan -Seconds 10))
     #support for name and value, did not consider other fields like expire time, domain...etc.
     $cookiepath = cookiejsonfilecheck($filename)
     if ($cookiepath) {
@@ -188,6 +192,7 @@ function checkPost {
         if ($wantdate -gt $commentdate) { $script:GREATERTHANFLAG = $true}
         else { $script:GREATERTHANFLAG = $false}
         if ($wantdate -eq $commentdate -and $post_id -notin $script:commentedpostid) {
+            #$script:ChromeDriver.Manage().Timeouts().ImplicitWait = 5
             $script:ChromeDriver.Navigate().GoToUrl($post_url)
             handlePost
             $script:commentedpostid += $post_id
