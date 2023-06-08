@@ -54,6 +54,7 @@ function setChromeDriver {
     param([string]$filename)
     $driver = New-Object OpenQA.Selenium.Chrome.ChromeDriver($opt)
     $driver.Navigate().GoToUrl($script:siteurl)
+    Start-Sleep 2
     $script:seleniumWait = New-Object -TypeName Support.UI.WebDriverWait($driver, (New-TimeSpan -Seconds 10))
     #support for name and value, did not consider other fields like expire time, domain...etc.
     $cookiepath = cookiejsonfilecheck($filename)
@@ -132,10 +133,15 @@ function postInfo {
     $commentdate = handleDate($post)
     $post_id = $post.FindElements([By]::TagName("td"))[1].GetAttribute("id")
     # $today_post = $post.FindElement([By]::CssSelector("[color='red']"))
-    $post_url = $post.FindElement([By]::TagName("h3")).FindElement([By]::TagName("a")).GetAttribute('href')
-    $genre = $post.FindElements([By]::TagName("td"))[1].FindElement([By]::TagName("a")).Text
-    $title = $post.FindElements([By]::TagName("td"))[1].FindElements([By]::TagName("a"))[1].Text
-    $samedate = $($(Get-Date -Format "yyyy-MM-dd") -eq $commentdate)
+    try {
+        $post_url = $post.FindElement([By]::TagName("h3")).FindElement([By]::TagName("a")).GetAttribute('href')
+        $genre = $post.FindElements([By]::TagName("td"))[1].FindElement([By]::TagName("a")).Text
+        $title = $post.FindElements([By]::TagName("td"))[1].FindElements([By]::TagName("a"))[1].Text
+        $samedate = $($(Get-Date -Format "yyyy-MM-dd") -eq $commentdate)
+    }
+    catch {
+        Write-Host "讀取錯誤，可能是公告類帖子"
+    }
     # $ChromeDriver.Manage().Timeouts().ImplicitWait(5)
 
     Write-Host "-----" -NoNewline
