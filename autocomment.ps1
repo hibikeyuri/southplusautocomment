@@ -24,8 +24,9 @@ $before_post_time_interval = 2
 $before_submit_time_interval = 6
 $wait_for_net_post_interval = 2
 
-$siteurl = ""
-$poststring = ""
+$sitepostjson = Get-Content -Raw -Path $mylocation\sitepost.json | ConvertFrom-Json
+$siteurl = $sitepostjson.siteurl
+$poststring = $sitepostjson.poststring
 
 $seleniumWait = ""
 $opt = New-Object -TypeName Chrome.ChromeOptions

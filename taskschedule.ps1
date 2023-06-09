@@ -18,9 +18,7 @@ if ($tasks) {
 }
 
 #Total Settings
-$tasks_urls = @{
-
-}
+$tasks_urls = Get-Content -Path  $mylocation\postgenre.json -Encoding UTF8 | ConvertFrom-Json
 
 # foreach ($key in $tasks_urls.Keys) {
 #     Write-Host $key, $tasks_urls[$key]
@@ -34,10 +32,12 @@ $attimes = @(
     Get-Date '2023-06-06 23:39:00'
     Get-Date '2023-06-06 23:29:00'
 )
-foreach ($key in $tasks_urls.Keys) {
+
+
+foreach ($key in $tasks_urls.PSObject.Properties.Name) {
     $trigger = New-ScheduledTaskTrigger -Once -At $attimes[$temp] -RepetitionInterval (New-TimeSpan -Hours 12)
     $taskName = $key
-    $url = $($tasks_urls[$taskName])
+    $url = $($tasks_urls.$key)
     $wantdate = Get-Date -Format "yyyy-MM-dd"
     $command = ".'$mylocation\autocomment.ps1' -url $url -wantdate $wantdate"
     $arg = "-WindowStyle Hidden -ExecutionPolicy ByPass -NonInteractive -Command $command"
@@ -45,3 +45,11 @@ foreach ($key in $tasks_urls.Keys) {
     Register-ScheduledTask $taskName -TaskPath $taskPath -Action $action -Trigger $trigger
     $temp += 1
 }
+
+#remove chromedriver.exe
+$trigger2 = New-ScheduledTaskTrigger -Once -At '2023-06-06 13:00:00' -RepetitionInterval (New-TimeSpan -Hours 12)
+$command2 = ".'$mylocation\removechromedriver.ps1'"
+$arg2 = "-WindowStyle Hidden -ExecutionPolicy ByPass -NonInteractive -Command $command2"
+$action2 = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument $arg2 -WorkingDirectory $mylocation
+Register-ScheduledTask "移除chromedriver.exe" -TaskPath $taskPath -Action $action2 -Trigger $trigger2
+$temp += 1
