@@ -39,7 +39,7 @@ foreach ($key in $tasks_urls.PSObject.Properties.Name) {
     $taskName = $key
     $url = $($tasks_urls.$key)
     $wantdate = Get-Date -Format "yyyy-MM-dd"
-    $command = ".'$mylocation\autocomment.ps1' -url $url -wantdate $wantdate"
+    $command = ".'$mylocation\autocomment.ps1' -url $url"
     $arg = "-WindowStyle Hidden -ExecutionPolicy ByPass -NonInteractive -Command $command"
     $action = New-ScheduledTaskAction -Execute "Powershell.exe" -Argument $arg -WorkingDirectory $mylocation
     Register-ScheduledTask $taskName -TaskPath $taskPath -Action $action -Trigger $trigger

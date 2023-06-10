@@ -3,7 +3,7 @@
 param(
     [Parameter(Position=0,mandatory=$true)]
     [string] $url,
-    [Parameter(Position=1,mandatory=$true)]
+    [Parameter(Position=1,mandatory=$false)]
     [string] $wantdate
 )
 
