@@ -20,10 +20,6 @@ if ($tasks) {
 #Total Settings
 $tasks_urls = Get-Content -Path  $mylocation\postgenre.json -Encoding UTF8 | ConvertFrom-Json
 
-# foreach ($key in $tasks_urls.Keys) {
-#     Write-Host $key, $tasks_urls[$key]
-# }
-
 
 $temp = 0
 $attimes = @(
